@@ -4,6 +4,7 @@ require 'taglib'
 require 'mp3info'
 require 'wavefile'
 require 'pathname'
+require_relative 'audio_metadata'
 
 class FileParser
   def initialize(options = {})
@@ -26,7 +27,6 @@ class FileParser
     end
 
     process_directory(directory_path)
-    [@processed_files, @successful_files]
   end
 
   private
@@ -60,7 +60,7 @@ class FileParser
       puts "File size: #{format_file_size(file_size)}"
       
       # Get audio metadata and duration
-      metadata = extract_metadata(file_path)
+      metadata = AudioMetadata.extract(file_path)
       duration = get_audio_duration(file_path)
       
       # Format the output
@@ -81,30 +81,6 @@ class FileParser
       puts "Error processing #{File.basename(file_path)}: #{e.message}"
     end
     success
-  end
-
-  def extract_metadata(file_path)
-    metadata = {}
-    
-    begin
-      TagLib::FileRef.open(file_path) do |file|
-        unless file.null?
-          tag = file.tag
-          metadata = {
-            title: tag.title,
-            artist: tag.artist,
-            album: tag.album,
-            year: tag.year,
-            genre: tag.genre,
-            comment: tag.comment
-          }
-        end
-      end
-    rescue => e
-      puts "  Warning: Could not extract metadata: #{e.message}"
-    end
-    
-    metadata
   end
 
   def get_audio_duration(file_path)
@@ -213,35 +189,80 @@ end
 
 # Main execution
 if __FILE__ == $0
-  directory_path = get_directory_path
-  parser = FileParser.new
+  puts "\nAudio File Parser"
+  puts "-----------------"
+  puts "1. Scan and display file information"
+  puts "2. Update metadata for files"
+  print "\nSelect an option (1 or 2): "
   
-  puts "\nScanning directory: #{directory_path}"
-  puts "This may take a while depending on the number of files..."
-  puts "\nFound audio files:"
+  option = gets.chomp
   
-  processed_files = 0
-  successful_files = 0
-  
-  parser.parse_directory(directory_path) do |file_info|
-    processed_files += 1
-    puts "\nFile ##{processed_files}:"
-    puts "Path: #{file_info[:path]}"
-    puts "Size: #{file_info[:size]}"
-    puts "Type: #{file_info[:type]}"
-    puts "Duration: #{file_info[:duration]}"
+  case option
+  when "1"
+    directory_path = get_directory_path
+    parser = FileParser.new
     
-    if file_info[:metadata].any? { |_, v| !v.nil? && !v.empty? }
-      puts "\nMetadata:"
-      file_info[:metadata].each do |key, value|
-        puts "#{key.capitalize}: #{value}" unless value.nil? || value.empty?
+    puts "\nScanning directory: #{directory_path}"
+    puts "This may take a while depending on the number of files..."
+    puts "\nFound audio files:"
+    
+    processed_files = 0
+    successful_files = 0
+    
+    parser.parse_directory(directory_path) do |file_info|
+      processed_files += 1
+      puts "\nFile ##{processed_files}:"
+      puts "Path: #{file_info[:path]}"
+      puts "Size: #{file_info[:size]}"
+      puts "Type: #{file_info[:type]}"
+      puts "Duration: #{file_info[:duration]}"
+      
+      if file_info[:metadata].any? { |_, v| !v.nil? && !v.empty? }
+        puts "\nMetadata:"
+        file_info[:metadata].each do |key, value|
+          puts "#{key.capitalize}: #{value}" unless value.nil? || value.empty?
+        end
+      end
+      puts "---"
+      successful_files += 1
+    end
+    
+    puts "\nScan complete!"
+    puts "Total files processed: #{processed_files}"
+    puts "Successfully processed: #{successful_files}"
+    
+  when "2"
+    directory_path = get_directory_path
+    parser = FileParser.new
+    
+    puts "\nEnter the metadata you want to set for all files in the directory."
+    puts "Leave fields empty to keep their current values."
+    metadata = AudioMetadata.prompt_for_metadata
+    
+    if metadata.empty?
+      puts "\nNo metadata provided. Exiting..."
+      exit
+    end
+    
+    puts "\nUpdating metadata for files in: #{directory_path}"
+    puts "This may take a while depending on the number of files..."
+    
+    updated_files = 0
+    failed_files = 0
+    
+    parser.parse_directory(directory_path) do |file_info|
+      if AudioMetadata.set(file_info[:path], metadata)
+        updated_files += 1
+      else
+        failed_files += 1
       end
     end
-    puts "---"
-    successful_files += 1
+    
+    puts "\nUpdate complete!"
+    puts "Successfully updated: #{updated_files} files"
+    puts "Failed to update: #{failed_files} files"
+    
+  else
+    puts "Invalid option. Please run the script again and select 1 or 2."
   end
-  
-  puts "\nScan complete!"
-  puts "Total files processed: #{processed_files}"
-  puts "Successfully processed: #{successful_files}"
 end 
