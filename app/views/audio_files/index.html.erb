@@ -1,0 +1,102 @@
+<div class="container mt-4">
+  <h1>Audio File Parser</h1>
+
+  <% if flash[:notice] %>
+    <div class="alert alert-success">
+      <%= flash[:notice] %>
+    </div>
+  <% end %>
+
+  <% if flash[:alert] %>
+    <div class="alert alert-danger">
+      <%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h2>Parse Directory</h2>
+    </div>
+    <div class="card-body">
+      <%= form_tag parse_audio_files_path, method: :post, class: "mb-4" do %>
+        <div class="form-group">
+          <%= label_tag :directory_path, "Directory Path:" %>
+          <%= text_field_tag :directory_path, nil, class: "form-control", required: true %>
+        </div>
+        <%= submit_tag "Parse Directory", class: "btn btn-primary mt-3" %>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @audio_files&.any? %>
+    <div class="card">
+      <div class="card-header">
+        <h2>Found Audio Files</h2>
+      </div>
+      <div class="card-body">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+          <% @audio_files.each do |audio_file| %>
+            <div class="col">
+              <div class="card h-100">
+                <% if audio_file.cover_art.present? %>
+                  <%= image_tag audio_file.cover_art, class: "card-img-top", alt: "Album Cover", style: "height: 200px; object-fit: cover;" %>
+                <% else %>
+                  <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <i class="bi bi-music-note" style="font-size: 3rem; color: white;"></i>
+                  </div>
+                <% end %>
+                <div class="card-body">
+                  <h5 class="card-title text-truncate" title="<%= audio_file.title %>">
+                    <%= audio_file.title || File.basename(audio_file.filename) %>
+                  </h5>
+                  <div class="card-text">
+                    <div class="mb-1">
+                      <small class="text-muted">Artist:</small>
+                      <div class="text-truncate" title="<%= audio_file.artist %>">
+                        <%= audio_file.artist || "Unknown Artist" %>
+                      </div>
+                    </div>
+                    <div class="mb-1">
+                      <small class="text-muted">Album:</small>
+                      <div class="text-truncate" title="<%= audio_file.album %>">
+                        <%= audio_file.album || "Unknown Album" %>
+                      </div>
+                    </div>
+                    <div class="mb-1">
+                      <small class="text-muted">Composer:</small>
+                      <div class="text-truncate" title="<%= audio_file.composer %>">
+                        <%= audio_file.composer || "Unknown Composer" %>
+                      </div>
+                    </div>
+                    <div class="mb-1">
+                      <small class="text-muted">Year:</small>
+                      <div><%= audio_file.year || "Unknown Year" %></div>
+                    </div>
+                    <div class="mb-1">
+                      <small class="text-muted">Genre:</small>
+                      <div class="text-truncate" title="<%= audio_file.genre %>">
+                        <%= audio_file.genre || "Unknown Genre" %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-footer">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <%= form_tag update_metadata_audio_file_path(audio_file), method: :patch, class: "d-inline" do %>
+                      <%= submit_tag "Update Metadata", class: "btn btn-sm btn-info" %>
+                    <% end %>
+                    <small class="text-muted"><%= File.extname(audio_file.filename).upcase[1..-1] %></small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="alert alert-info">
+      No audio files found. Please parse a directory to get started.
+    </div>
+  <% end %>
+</div>
