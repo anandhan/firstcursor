@@ -1,39 +1,40 @@
 class AudioFilesController < ApplicationController
   def index
-    @audio_files = AudioFile.all
-    @directory_contents = nil
+    @audio_files = []
   end
 
-  def parse
-    @audio_files = AudioFile.all
+  def scan
+    path = params[:path]
     
-    if params[:directory_path].present?
-      directory_path = params[:directory_path]
-      Rails.logger.info "Received directory path: #{directory_path}"
-      
-      begin
-        # Ensure the path is absolute and exists
-        directory_path = File.expand_path(directory_path)
-        Rails.logger.info "Expanded directory path: #{directory_path}"
-
-        if File.directory?(directory_path)
-          @directory_contents = AudioFile.parse_directory(directory_path)
-          @audio_files = AudioFile.all
-          flash[:notice] = "Successfully scanned directory: #{directory_path}"
-          Rails.logger.info "Successfully scanned directory: #{directory_path}"
-        else
-          flash[:alert] = "Please select a valid directory"
-          Rails.logger.error "Invalid directory path provided: #{directory_path}"
-        end
-      rescue => e
-        flash[:alert] = "Error scanning directory: #{e.message}"
-        Rails.logger.error "Error scanning directory: #{e.message}\n#{e.backtrace.join("\n")}"
-      end
-    else
-      flash[:alert] = "Please select a directory to scan"
-      Rails.logger.error "No directory selected"
+    if path.blank?
+      flash[:alert] = "Please enter a directory path"
+      redirect_to root_path
+      return
     end
-    
+
+    begin
+      path = File.expand_path(path)
+      
+      unless File.directory?(path)
+        flash[:alert] = "Invalid directory path"
+        redirect_to root_path
+        return
+      end
+
+      @audio_files = []
+      Dir.foreach(path) do |file|
+        next if file == '.' || file == '..'
+        ext = File.extname(file).downcase
+        if ['.mp3', '.wav', '.m4a', '.flac', '.ogg'].include?(ext)
+          @audio_files << { name: file, type: ext }
+        end
+      end
+
+      flash[:notice] = "Found #{@audio_files.size} audio files"
+    rescue => e
+      flash[:alert] = "Error: #{e.message}"
+    end
+
     render :index
   end
 
