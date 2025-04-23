@@ -1,5 +1,139 @@
-class AudioFile < ApplicationRecord
-  validates :filename, presence: true
+require 'mini_exiftool'
+require 'taglib'
+
+class AudioFile
+  AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.flac', '.ogg'].freeze
+
+  def self.scan_directory(directory_path)
+    Rails.logger.info "Scanning directory: #{directory_path}"
+    return [] unless File.directory?(directory_path)
+
+    Dir.glob(File.join(directory_path, '**', '*')).select do |file|
+      next unless File.file?(file)
+      ext = File.extname(file).downcase
+      AUDIO_EXTENSIONS.include?(ext)
+    end
+  end
+
+  def self.update_metadata(file_path)
+    Rails.logger.info "Updating metadata for: #{file_path}"
+    begin
+      # First try with ExifTool for basic metadata
+      exiftool = MiniExiftool.new(file_path)
+      Rails.logger.info "ExifTool initialized successfully"
+      
+      # Extract basic metadata
+      metadata = {
+        title: exiftool.title || File.basename(file_path, '.*'),
+        artist: exiftool.artist,
+        album: exiftool.album,
+        year: exiftool.year,
+        genre: exiftool.genre
+      }
+      Rails.logger.info "Extracted metadata: #{metadata.inspect}"
+      
+      # Now try to extract cover art using TagLib
+      begin
+        TagLib::FileRef.open(file_path) do |file|
+          unless file.null?
+            tag = file.tag
+            if tag
+              # Update metadata with TagLib data if ExifTool didn't find it
+              metadata[:title] ||= tag.title
+              metadata[:artist] ||= tag.artist
+              metadata[:album] ||= tag.album
+              metadata[:year] ||= tag.year
+              metadata[:genre] ||= tag.genre
+            end
+            
+            # Try to get cover art
+            if file.respond_to?(:properties)
+              properties = file.properties
+              if properties && properties.respond_to?(:pictures)
+                pictures = properties.pictures
+                if pictures && !pictures.empty?
+                  Rails.logger.info "Found #{pictures.size} pictures using TagLib"
+                  picture = pictures.first
+                  if picture && picture.data
+                    Rails.logger.info "Picture data size: #{picture.data.bytesize} bytes"
+                    
+                    # Save the cover art
+                    cover_dir = Rails.root.join('public', 'cover_art')
+                    FileUtils.mkdir_p(cover_dir) unless Dir.exist?(cover_dir)
+                    
+                    filename = "#{File.basename(file_path, '.*')}_#{Time.now.to_i}.jpg"
+                    cover_path = cover_dir.join(filename)
+                    
+                    begin
+                      File.binwrite(cover_path, picture.data)
+                      if File.exist?(cover_path)
+                        metadata[:cover_art_path] = "/cover_art/#{filename}"
+                        Rails.logger.info "Cover art successfully saved to: #{cover_path}"
+                      end
+                    rescue => e
+                      Rails.logger.error "Error saving cover art: #{e.message}"
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      rescue => e
+        Rails.logger.error "Error with TagLib: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+      end
+
+      metadata
+    rescue => e
+      Rails.logger.error "Error processing #{file_path}: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      {}
+    end
+  end
+
+  private
+
+  def self.is_valid_cover_art?(data)
+    return false unless data.respond_to?(:bytesize)
+    
+    # Check for JPEG markers
+    if data.include?("\xFF\xD8\xFF") && data.include?("\xFF\xD9")
+      Rails.logger.info "Cover art appears to be a valid JPEG"
+      return true
+    end
+    
+    # Check for PNG markers
+    if data.include?("\x89PNG\r\n\x1a\n")
+      Rails.logger.info "Cover art appears to be a valid PNG"
+      return true
+    end
+    
+    # If we can't determine the format but the data exists, accept it
+    if data.bytesize > 0
+      Rails.logger.info "Cover art data exists but format is unknown"
+      return true
+    end
+    
+    false
+  end
+
+  def self.extract_embedded_image(file_path)
+    begin
+      file_data = File.binread(file_path)
+      # Look for JPEG markers
+      if file_data.include?("\xFF\xD8\xFF")
+        start_idx = file_data.index("\xFF\xD8\xFF")
+        end_idx = file_data.index("\xFF\xD9", start_idx)
+        if end_idx
+          return file_data[start_idx..end_idx+1]
+        end
+      end
+    rescue => e
+      Rails.logger.error "Error extracting embedded image: #{e.message}"
+    end
+    nil
+  end
 
   def self.list_directory_contents(directory_path)
     Rails.logger.info "Listing contents of directory: #{directory_path}"
@@ -81,63 +215,6 @@ class AudioFile < ApplicationRecord
         end
       }.compact
     }
-  end
-
-  def update_metadata
-    begin
-      Rails.logger.info "Starting metadata update for file: #{filename}"
-      
-      # Initialize ExifTool
-      exif = MiniExiftool.new(filename)
-      Rails.logger.info "ExifTool initialized for file: #{filename}"
-      
-      # Extract metadata
-      self.title = exif.title || File.basename(filename, '.*')
-      self.artist = exif.artist
-      self.album = exif.album
-      self.year = exif.year
-      self.genre = exif.genre
-      self.composer = exif.composer
-      
-      Rails.logger.info "Extracted metadata: title=#{title}, artist=#{artist}, album=#{album}, year=#{year}, genre=#{genre}"
-      
-      # Handle cover art
-      if exif.picture
-        Rails.logger.info "Found cover art in file: #{filename}"
-        cover_art_dir = Rails.root.join('public', 'cover_art')
-        FileUtils.mkdir_p(cover_art_dir)
-        Rails.logger.info "Created cover art directory at: #{cover_art_dir}"
-        
-        cover_art_filename = "#{SecureRandom.hex(8)}.jpg"
-        cover_art_path = cover_art_dir.join(cover_art_filename)
-        
-        begin
-          File.open(cover_art_path, 'wb') do |f|
-            f.write(exif.picture)
-          end
-          Rails.logger.info "Successfully wrote cover art to: #{cover_art_path}"
-          self.cover_art = "/cover_art/#{cover_art_filename}"
-        rescue => e
-          Rails.logger.error "Failed to write cover art: #{e.message}\n#{e.backtrace.join("\n")}"
-        end
-      else
-        Rails.logger.info "No cover art found in file: #{filename}"
-      end
-      
-      if save
-        Rails.logger.info "Successfully updated metadata for file: #{filename}"
-        Rails.logger.info "Metadata: title=#{title}, artist=#{artist}, album=#{album}, year=#{year}, genre=#{genre}"
-        Rails.logger.info "Cover art path: #{cover_art}" if cover_art
-        true
-      else
-        Rails.logger.error "Failed to save metadata for file: #{filename}"
-        Rails.logger.error "Errors: #{errors.full_messages.join(', ')}"
-        false
-      end
-    rescue => e
-      Rails.logger.error "Error updating metadata for file: #{filename}\n#{e.message}\n#{e.backtrace.join("\n")}"
-      false
-    end
   end
 
   def self.parse_directory(directory_path)

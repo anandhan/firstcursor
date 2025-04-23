@@ -1,40 +1,81 @@
-<h1>Audio File Scanner</h1>
+<div class="container mt-5">
+  <h1 class="mb-4">Audio File Scanner</h1>
 
-<% if flash[:notice] %>
-  <div class="alert alert-success">
-    <%= flash[:notice] %>
-  </div>
-<% end %>
+  <%= form_tag(scan_audio_files_path, method: :post, class: "mb-4") do %>
+    <div class="input-group">
+      <input type="text" id="directory-path" name="path" class="form-control" placeholder="Enter directory path">
+      <button type="submit" class="btn btn-primary">Scan Directory</button>
+    </div>
+  <% end %>
 
-<% if flash[:alert] %>
-  <div class="alert alert-danger">
-    <%= flash[:alert] %>
-  </div>
-<% end %>
+  <% if flash[:error] %>
+    <div class="alert alert-danger"><%= flash[:error] %></div>
+  <% end %>
 
-<%= form_tag scan_audio_files_path, method: :post do %>
-  <div class="mb-3">
-    <label for="path">Directory Path:</label>
-    <input type="text" name="path" class="form-control" required>
-  </div>
-  <button type="submit" class="btn btn-primary">Scan for Audio Files</button>
-<% end %>
+  <% if flash[:notice] %>
+    <div class="alert alert-success"><%= flash[:notice] %></div>
+  <% end %>
 
-<% if @audio_files.any? %>
-  <h2>Audio Files Found:</h2>
-  <ul>
-    <% @audio_files.each do |file| %>
-      <li><%= file[:name] %> (<%= file[:type] %>)</li>
-    <% end %>
-  </ul>
-<% end %>
+  <% if @audio_files&.any? %>
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+      <% @audio_files.each do |file| %>
+        <div class="col">
+          <div class="card h-100">
+            <% if file[:metadata]&.[](:cover_art_path) %>
+              <div class="card-img-top position-relative">
+                <%= image_tag file[:metadata][:cover_art_path], class: "img-fluid", alt: "Album Cover", style: "height: 200px; width: 100%; object-fit: cover;" %>
+                <div class="position-absolute top-0 end-0 p-2 bg-dark bg-opacity-50 text-white">
+                  <%= file[:type].upcase %>
+                </div>
+              </div>
+            <% else %>
+              <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+                <i class="bi bi-music-note" style="font-size: 3rem;"></i>
+                <div class="position-absolute top-0 end-0 p-2 bg-dark bg-opacity-50 text-white">
+                  <%= file[:type].upcase %>
+                </div>
+              </div>
+            <% end %>
+            <div class="card-body">
+              <h5 class="card-title"><%= file[:metadata]&.[](:title) || file[:name] %></h5>
+              <% if file[:metadata] %>
+                <p class="card-text">
+                  <% if file[:metadata][:artist].present? %>
+                    <strong>Artist:</strong> <%= file[:metadata][:artist] %><br>
+                  <% end %>
+                  <% if file[:metadata][:album].present? %>
+                    <strong>Album:</strong> <%= file[:metadata][:album] %><br>
+                  <% end %>
+                  <% if file[:metadata][:year].present? %>
+                    <strong>Year:</strong> <%= file[:metadata][:year] %><br>
+                  <% end %>
+                  <% if file[:metadata][:genre].present? %>
+                    <strong>Genre:</strong> <%= file[:metadata][:genre] %><br>
+                  <% end %>
+                </p>
+              <% end %>
+              <p class="card-text text-muted">
+                <small>Type: <%= file[:type].upcase %></small>
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="alert alert-info">No audio files found. Enter a directory path to scan.</div>
+  <% end %>
+</div>
 
 <script>
-function updateDirectoryPath(input) {
-  if (input.files && input.files.length > 0) {
-    const path = input.files[0].webkitRelativePath.split('/')[0];
-    document.getElementById('directory-path-display').value = path;
-    document.getElementById('directory-path').value = path;
-  }
-}
+document.getElementById('directory-picker').addEventListener('change', function(e) {
+  const path = e.target.files[0].path;
+  const directoryPath = path.substring(0, path.lastIndexOf('/'));
+  document.getElementById('directory-path').value = directoryPath;
+  document.getElementById('directory-path-display').value = directoryPath;
+});
+
+document.getElementById('directory-path-display').addEventListener('click', function() {
+  document.getElementById('directory-picker').click();
+});
 </script>

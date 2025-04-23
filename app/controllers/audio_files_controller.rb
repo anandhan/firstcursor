@@ -1,38 +1,44 @@
 class AudioFilesController < ApplicationController
   def index
     @audio_files = []
+    @directory_contents = nil
   end
 
   def scan
-    path = params[:path]
-    
-    if path.blank?
-      flash[:alert] = "Please enter a directory path"
-      redirect_to root_path
-      return
+    directory_path = params[:path]
+    Rails.logger.info "Received directory path: #{directory_path}"
+
+    if directory_path.blank?
+      flash[:error] = "No directory selected"
+      redirect_to audio_files_path and return
     end
 
     begin
-      path = File.expand_path(path)
-      
-      unless File.directory?(path)
-        flash[:alert] = "Invalid directory path"
-        redirect_to root_path
-        return
+      expanded_path = File.expand_path(directory_path)
+      Rails.logger.info "Expanded path: #{expanded_path}"
+
+      unless File.directory?(expanded_path)
+        flash[:error] = "Invalid directory path"
+        redirect_to audio_files_path and return
       end
 
-      @audio_files = []
-      Dir.foreach(path) do |file|
-        next if file == '.' || file == '..'
-        ext = File.extname(file).downcase
-        if ['.mp3', '.wav', '.m4a', '.flac', '.ogg'].include?(ext)
-          @audio_files << { name: file, type: ext }
-        end
+      @audio_files = AudioFile.scan_directory(expanded_path).map do |file_path|
+        metadata = AudioFile.update_metadata(file_path)
+        {
+          path: file_path,
+          name: File.basename(file_path),
+          type: File.extname(file_path).downcase[1..-1],
+          metadata: metadata
+        }
       end
 
+      Rails.logger.info "Found #{@audio_files.size} audio files"
       flash[:notice] = "Found #{@audio_files.size} audio files"
     rescue => e
-      flash[:alert] = "Error: #{e.message}"
+      Rails.logger.error "Error scanning directory: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      flash[:error] = "Error scanning directory: #{e.message}"
+      @audio_files = []
     end
 
     render :index
@@ -51,5 +57,40 @@ class AudioFilesController < ApplicationController
     end
     
     redirect_to audio_files_path
+  end
+
+  private
+
+  def extract_cover_art(file_path)
+    # Create a directory for cover art if it doesn't exist
+    cover_art_dir = Rails.root.join('public', 'cover_art')
+    FileUtils.mkdir_p(cover_art_dir)
+
+    # Generate a unique filename for the cover art
+    filename = Digest::MD5.hexdigest(file_path) + '.jpg'
+    cover_art_path = cover_art_dir.join(filename)
+
+    # Only extract if we haven't already
+    return "/cover_art/#{filename}" if File.exist?(cover_art_path)
+
+    begin
+      # Use ffmpeg to extract the cover art
+      system("ffmpeg -i \"#{file_path}\" -an -vcodec copy \"#{cover_art_path}\" 2>/dev/null")
+      
+      # If extraction failed, try another method
+      unless File.exist?(cover_art_path)
+        system("ffmpeg -i \"#{file_path}\" -map 0:v -map -0:V -c copy \"#{cover_art_path}\" 2>/dev/null")
+      end
+
+      # If we successfully extracted cover art, return the path
+      if File.exist?(cover_art_path)
+        "/cover_art/#{filename}"
+      else
+        nil
+      end
+    rescue => e
+      Rails.logger.error "Error extracting cover art: #{e.message}"
+      nil
+    end
   end
 end
