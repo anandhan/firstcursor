@@ -1,55 +1,38 @@
-# Audio File Parser
+# First Cursor
 
-A Ruby script to recursively parse and analyze audio files in a directory. The script provides detailed information about audio files including metadata, duration, and technical specifications.
+A Ruby-based project for monitoring and analyzing directory changes.
 
 ## Features
 
-- Recursively scans directories for audio files
-- Supports multiple audio formats (WAV, MP3, AAC, FLAC, OGG, M4A, WMA, AIFF, ALAC)
-- Extracts audio metadata (title, artist, album, year, genre)
-- Provides technical details (channels, sample rate, bit depth)
-- Shows file size and duration
-- Handles macOS metadata files
-- Interactive directory selection
+- Directory monitoring and change detection
+- Audio file metadata extraction
+- File parsing capabilities
+- Real-time change logging
 
-## Requirements
+## Setup
 
-- Ruby 2.7 or higher
-- Bundler
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone <your-repository-url>
-cd audio-file-parser
-```
-
-2. Install dependencies:
+1. Install dependencies:
 ```bash
 bundle install
 ```
 
+2. Configure your environment:
+```bash
+cp config/application.example.yml config/application.yml
+```
+
+3. Start the application:
+```bash
+rails server
+```
+
 ## Usage
 
-Run the script:
-```bash
-ruby file_parser.rb
-```
+The project provides several key functionalities:
 
-The script will prompt you to enter the path to your music directory. You can use:
-- Full path: `/Users/username/Music`
-- Home directory shortcut: `~/Music`
-- Relative path: `./music`
-
-## Example Output
-
-```
-Processing: song.wav
-File size: 77.65 MB
-WAV format: 2 channels, 48000 Hz, 24 bits per sample
-Duration: 03:45
-```
+- Directory monitoring with real-time change detection
+- Audio file metadata extraction and manipulation
+- File parsing and analysis
 
 ## License
 
