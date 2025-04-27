@@ -14,10 +14,11 @@ A Ruby on Rails web application for parsing and analyzing audio files (MP3 and W
   - Technical details (for WAV files)
 - Modern, responsive web interface
 - Real-time processing feedback
+- Easy installation with automated setup script
 
 ## Dependencies
 
-- Ruby 3.1.3
+- Ruby 3.1.3 or higher
 - Rails 7.1.5
 - [ruby-mp3info](https://github.com/moumar/ruby-mp3info) - For MP3 file metadata and duration
 - [wavefile](https://github.com/jstrait/wavefile) - For WAV file analysis
@@ -25,6 +26,29 @@ A Ruby on Rails web application for parsing and analyzing audio files (MP3 and W
 - Redis (for Action Cable in production)
 
 ## Installation
+
+### Quick Installation (Recommended)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/anandhan/firstcursor.git
+   cd firstcursor/audio_file_parser_web
+   ```
+
+2. Run the installation script:
+   ```bash
+   ./install.sh
+   ```
+
+The installation script will:
+- Check for required dependencies
+- Install Ruby gems
+- Set up the database
+- Start the Rails server
+
+### Manual Installation
+
+If you prefer to install manually:
 
 1. Clone the repository:
    ```bash
@@ -37,12 +61,22 @@ A Ruby on Rails web application for parsing and analyzing audio files (MP3 and W
    bundle install
    ```
 
-3. Start the Rails server:
+3. Create necessary directories:
+   ```bash
+   mkdir -p log tmp/pids
+   ```
+
+4. Set up the database:
+   ```bash
+   bin/rails db:create db:migrate
+   ```
+
+5. Start the Rails server:
    ```bash
    bin/rails server
    ```
 
-4. Access the application at `http://localhost:3000`
+6. Access the application at `http://localhost:3000`
 
 ## Usage
 
