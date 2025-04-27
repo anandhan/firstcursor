@@ -1,7 +1,11 @@
 class AudioFilesController < ApplicationController
   def index
     @audio_files = []
-    @directory_contents = nil
+    @directory_path = params[:directory_path]
+    
+    if @directory_path.present?
+      @audio_files = scan_directory(@directory_path)
+    end
   end
 
   def scan
@@ -60,6 +64,37 @@ class AudioFilesController < ApplicationController
   end
 
   private
+
+  def scan_directory(path)
+    audio_files = []
+    return audio_files unless Dir.exist?(path)
+
+    Dir.glob(File.join(path, '**', '*')).each do |file|
+      next if File.directory?(file)
+      next unless audio_file?(file)
+
+      metadata = AudioMetadata.extract(file)
+      audio_files << {
+        path: file,
+        name: File.basename(file),
+        metadata: metadata,
+        size: format_file_size(File.size(file))
+      }
+    end
+
+    audio_files
+  end
+
+  def audio_file?(file)
+    %w[.mp3 .wav .aac .flac .ogg .m4a .wma .aiff .alac].include?(File.extname(file).downcase)
+  end
+
+  def format_file_size(bytes)
+    return "#{bytes} B" if bytes < 1024
+    return "#{(bytes / 1024.0).round(2)} KB" if bytes < 1024 * 1024
+    return "#{(bytes / (1024.0 * 1024.0)).round(2)} MB" if bytes < 1024 * 1024 * 1024
+    "#{(bytes / (1024.0 * 1024.0 * 1024.0)).round(2)} GB"
+  end
 
   def extract_cover_art(file_path)
     # Create a directory for cover art if it doesn't exist

@@ -1,81 +1,79 @@
-<div class="container mt-5">
-  <h1 class="mb-4">Audio File Scanner</h1>
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold mb-8">Audio File Browser</h1>
 
-  <%= form_tag(scan_audio_files_path, method: :post, class: "mb-4") do %>
-    <div class="input-group">
-      <input type="text" id="directory-path" name="path" class="form-control" placeholder="Enter directory path">
-      <button type="submit" class="btn btn-primary">Scan Directory</button>
-    </div>
-  <% end %>
+  <div class="mb-8">
+    <form action="<%= audio_files_path %>" method="get" class="flex gap-4">
+      <input type="text" 
+             name="directory_path" 
+             value="<%= @directory_path %>" 
+             placeholder="Enter directory path" 
+             class="flex-1 px-4 py-2 border rounded-lg"
+             id="directory-path-display">
+      
+      <button type="button" 
+              class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              onclick="document.getElementById('directory-picker').click()">
+        Choose Directory
+      </button>
+      
+      <input type="file" 
+             id="directory-picker" 
+             webkitdirectory 
+             directory 
+             style="display: none"
+             onchange="updateDirectoryPath(this)">
+    </form>
+  </div>
 
-  <% if flash[:error] %>
-    <div class="alert alert-danger"><%= flash[:error] %></div>
-  <% end %>
-
-  <% if flash[:notice] %>
-    <div class="alert alert-success"><%= flash[:notice] %></div>
-  <% end %>
-
-  <% if @audio_files&.any? %>
-    <div class="row row-cols-1 row-cols-md-3 g-4">
+  <% if @audio_files.any? %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <% @audio_files.each do |file| %>
-        <div class="col">
-          <div class="card h-100">
-            <% if file[:metadata]&.[](:cover_art_path) %>
-              <div class="card-img-top position-relative">
-                <%= image_tag file[:metadata][:cover_art_path], class: "img-fluid", alt: "Album Cover", style: "height: 200px; width: 100%; object-fit: cover;" %>
-                <div class="position-absolute top-0 end-0 p-2 bg-dark bg-opacity-50 text-white">
-                  <%= file[:type].upcase %>
-                </div>
-              </div>
-            <% else %>
-              <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
-                <i class="bi bi-music-note" style="font-size: 3rem;"></i>
-                <div class="position-absolute top-0 end-0 p-2 bg-dark bg-opacity-50 text-white">
-                  <%= file[:type].upcase %>
-                </div>
-              </div>
+        <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+          <div class="mb-4">
+            <h3 class="text-xl font-semibold text-gray-800"><%= file[:name] %></h3>
+            <p class="text-sm text-gray-500"><%= file[:size] %></p>
+          </div>
+
+          <div class="space-y-2">
+            <% if file[:metadata][:title].present? %>
+              <p><span class="font-medium">Title:</span> <%= file[:metadata][:title] %></p>
             <% end %>
-            <div class="card-body">
-              <h5 class="card-title"><%= file[:metadata]&.[](:title) || file[:name] %></h5>
-              <% if file[:metadata] %>
-                <p class="card-text">
-                  <% if file[:metadata][:artist].present? %>
-                    <strong>Artist:</strong> <%= file[:metadata][:artist] %><br>
-                  <% end %>
-                  <% if file[:metadata][:album].present? %>
-                    <strong>Album:</strong> <%= file[:metadata][:album] %><br>
-                  <% end %>
-                  <% if file[:metadata][:year].present? %>
-                    <strong>Year:</strong> <%= file[:metadata][:year] %><br>
-                  <% end %>
-                  <% if file[:metadata][:genre].present? %>
-                    <strong>Genre:</strong> <%= file[:metadata][:genre] %><br>
-                  <% end %>
-                </p>
-              <% end %>
-              <p class="card-text text-muted">
-                <small>Type: <%= file[:type].upcase %></small>
-              </p>
-            </div>
+            
+            <% if file[:metadata][:artist].present? %>
+              <p><span class="font-medium">Artist:</span> <%= file[:metadata][:artist] %></p>
+            <% end %>
+            
+            <% if file[:metadata][:album].present? %>
+              <p><span class="font-medium">Album:</span> <%= file[:metadata][:album] %></p>
+            <% end %>
+            
+            <% if file[:metadata][:year].present? %>
+              <p><span class="font-medium">Year:</span> <%= file[:metadata][:year] %></p>
+            <% end %>
+            
+            <% if file[:metadata][:genre].present? %>
+              <p><span class="font-medium">Genre:</span> <%= file[:metadata][:genre] %></p>
+            <% end %>
           </div>
         </div>
       <% end %>
     </div>
-  <% else %>
-    <div class="alert alert-info">No audio files found. Enter a directory path to scan.</div>
+  <% elsif @directory_path.present? %>
+    <div class="text-center py-8">
+      <p class="text-gray-500">No audio files found in the selected directory.</p>
+    </div>
   <% end %>
 </div>
 
 <script>
-document.getElementById('directory-picker').addEventListener('change', function(e) {
-  const path = e.target.files[0].path;
-  const directoryPath = path.substring(0, path.lastIndexOf('/'));
-  document.getElementById('directory-path').value = directoryPath;
-  document.getElementById('directory-path-display').value = directoryPath;
-});
-
-document.getElementById('directory-path-display').addEventListener('click', function() {
-  document.getElementById('directory-picker').click();
-});
+function updateDirectoryPath(input) {
+  const pathDisplay = document.getElementById('directory-path-display');
+  if (input.files.length > 0) {
+    // Get the directory path from the first file
+    const path = input.files[0].webkitRelativePath.split('/')[0];
+    pathDisplay.value = input.files[0].path.replace(/\\/g, '/').replace('/' + path, '');
+    // Submit the form
+    input.form.submit();
+  }
+}
 </script>
