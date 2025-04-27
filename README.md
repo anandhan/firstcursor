@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Audio File Parser Web Application
 
 A Ruby on Rails web application for parsing and managing audio file metadata. The application allows users to scan directories for audio files, extract their metadata, and manage cover art.
@@ -58,9 +59,39 @@ A Ruby on Rails web application for parsing and managing audio file metadata. Th
    ```
 
 6. Open your browser and navigate to `http://localhost:3000`
+=======
+# First Cursor
+
+A Ruby-based project for monitoring and analyzing directory changes.
+
+## Features
+
+- Directory monitoring and change detection
+- Audio file metadata extraction
+- File parsing capabilities
+- Real-time change logging
+
+## Setup
+
+1. Install dependencies:
+```bash
+bundle install
+```
+>>>>>>> a1e137ed463b6fa3da681a4e13ce529da1ac682a
+
+2. Configure your environment:
+```bash
+cp config/application.example.yml config/application.yml
+```
+
+3. Start the application:
+```bash
+rails server
+```
 
 ## Usage
 
+<<<<<<< HEAD
 1. **Directory Selection**
    - Click the "Browse" button to select a directory containing audio files
    - The application will display the selected directory path
@@ -105,6 +136,13 @@ A Ruby on Rails web application for parsing and managing audio file metadata. Th
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+=======
+The project provides several key functionalities:
+
+- Directory monitoring with real-time change detection
+- Audio file metadata extraction and manipulation
+- File parsing and analysis
+>>>>>>> a1e137ed463b6fa3da681a4e13ce529da1ac682a
 
 ## License
 
