@@ -1,20 +1,17 @@
+require_relative '../../lib/audio_parser/file_parser'
+
 class AudioFilesController < ApplicationController
   def index
-    @audio_files = []
-    @directory_path = params[:directory_path]
-    
-    if @directory_path.present?
-      @audio_files = scan_directory(@directory_path)
-    end
+    @files = []
   end
 
-  def scan
-    directory_path = params[:path]
+  def parse
+    directory_path = params[:directory_path]
     Rails.logger.info "Received directory path: #{directory_path}"
 
     if directory_path.blank?
-      flash[:error] = "No directory selected"
-      redirect_to audio_files_path and return
+      flash[:error] = "Please enter a directory path"
+      redirect_to root_path and return
     end
 
     begin
@@ -22,27 +19,25 @@ class AudioFilesController < ApplicationController
       Rails.logger.info "Expanded path: #{expanded_path}"
 
       unless File.directory?(expanded_path)
-        flash[:error] = "Invalid directory path"
-        redirect_to audio_files_path and return
+        flash[:error] = "Invalid directory path: #{expanded_path}"
+        redirect_to root_path and return
       end
 
-      @audio_files = AudioFile.scan_directory(expanded_path).map do |file_path|
-        metadata = AudioFile.update_metadata(file_path)
-        {
-          path: file_path,
-          name: File.basename(file_path),
-          type: File.extname(file_path).downcase[1..-1],
-          metadata: metadata
-        }
+      parser = FileParser.new
+      @files = []
+      
+      parser.parse_directory(expanded_path) do |file_info|
+        @files << file_info
+        Rails.logger.info "Added file: #{file_info[:path]}"
       end
 
-      Rails.logger.info "Found #{@audio_files.size} audio files"
-      flash[:notice] = "Found #{@audio_files.size} audio files"
+      Rails.logger.info "Found #{@files.size} audio files"
+      flash[:notice] = "Found #{@files.size} audio files"
     rescue => e
       Rails.logger.error "Error scanning directory: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       flash[:error] = "Error scanning directory: #{e.message}"
-      @audio_files = []
+      @files = []
     end
 
     render :index
@@ -65,35 +60,23 @@ class AudioFilesController < ApplicationController
 
   private
 
-  def scan_directory(path)
-    audio_files = []
-    return audio_files unless Dir.exist?(path)
-
-    Dir.glob(File.join(path, '**', '*')).each do |file|
-      next if File.directory?(file)
-      next unless audio_file?(file)
-
-      metadata = AudioMetadata.extract(file)
-      audio_files << {
-        path: file,
-        name: File.basename(file),
-        metadata: metadata,
-        size: format_file_size(File.size(file))
-      }
-    end
-
-    audio_files
-  end
-
   def audio_file?(file)
-    %w[.mp3 .wav .aac .flac .ogg .m4a .wma .aiff .alac].include?(File.extname(file).downcase)
+    %w[.mp3 .wav].include?(File.extname(file).downcase)
   end
 
   def format_file_size(bytes)
     return "#{bytes} B" if bytes < 1024
-    return "#{(bytes / 1024.0).round(2)} KB" if bytes < 1024 * 1024
-    return "#{(bytes / (1024.0 * 1024.0)).round(2)} MB" if bytes < 1024 * 1024 * 1024
-    "#{(bytes / (1024.0 * 1024.0 * 1024.0)).round(2)} GB"
+    
+    units = ['KB', 'MB', 'GB', 'TB']
+    size = bytes.to_f
+    unit = 0
+    
+    while size >= 1024 && unit < units.size - 1
+      size /= 1024
+      unit += 1
+    end
+    
+    "#{size.round(2)} #{units[unit]}"
   end
 
   def extract_cover_art(file_path)

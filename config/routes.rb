@@ -2,7 +2,7 @@ Rails.application.routes.draw do
   root 'audio_files#index'
   resources :audio_files, only: [:index] do
     collection do
-      post 'scan'
+      post 'parse'
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

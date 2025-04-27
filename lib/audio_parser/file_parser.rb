@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 
-require 'taglib'
 require 'mp3info'
 require 'wavefile'
 require 'pathname'
@@ -10,7 +9,7 @@ class FileParser
   def initialize(options = {})
     @options = {
       # Common audio file extensions
-      file_pattern: /\.(mp3|wav|aac|flac|ogg|m4a|wma|aiff|alac)$/i,  # Case insensitive match
+      file_pattern: /\.(mp3|wav)$/i,  # Case insensitive match, only MP3 and WAV supported
       exclude_dirs: ['.', '..', '.git', 'node_modules'],
       exclude_files: [/^\._/],  # Exclude macOS metadata files
       verbose: true  # Always show verbose output for better debugging
@@ -20,18 +19,18 @@ class FileParser
     @successful_files = 0
   end
 
-  def parse_directory(directory_path)
+  def parse_directory(directory_path, &block)
     unless File.directory?(directory_path)
       puts "Error: #{directory_path} is not a valid directory"
       return
     end
 
-    process_directory(directory_path)
+    process_directory(directory_path, &block)
   end
 
   private
 
-  def process_directory(directory_path)
+  def process_directory(directory_path, &block)
     Dir.foreach(directory_path) do |entry|
       # Skip excluded directories and files
       next if @options[:exclude_dirs].include?(entry)
@@ -40,17 +39,17 @@ class FileParser
       full_path = File.join(directory_path, entry)
       
       if File.directory?(full_path)
-        process_directory(full_path)
+        process_directory(full_path, &block)
       elsif File.file?(full_path) && entry.match(@options[:file_pattern])
         @processed_files += 1
-        if process_audio_file(full_path)
+        if process_audio_file(full_path, &block)
           @successful_files += 1
         end
       end
     end
   end
 
-  def process_audio_file(file_path)
+  def process_audio_file(file_path, &block)
     success = false
     begin
       file_size = File.size(file_path)
@@ -72,13 +71,14 @@ class FileParser
         metadata: metadata
       }
       
-      if duration || metadata.any? { |_, v| !v.nil? && !v.empty? }
-        success = true
-      end
+      # Always yield the output
+      block.call(output) if block_given?
+      success = true
       
-      yield(output) if block_given?
+      puts "Successfully processed: #{File.basename(file_path)}"
     rescue => e
       puts "Error processing #{File.basename(file_path)}: #{e.message}"
+      puts e.backtrace.join("\n")
     end
     success
   end
@@ -90,8 +90,8 @@ class FileParser
     when '.wav'
       get_wav_duration(file_path)
     else
-      # For other formats, we'll use TagLib's duration
-      get_taglib_duration(file_path)
+      puts "  Warning: Unsupported file format for duration extraction"
+      nil
     end
   end
 
@@ -108,31 +108,10 @@ class FileParser
 
   def get_wav_duration(file_path)
     begin
-      # First try with WaveFile gem
       reader = WaveFile::Reader.new(file_path)
-      format = reader.format
-      puts "  WAV format: #{format.channels} channels, #{format.sample_rate} Hz, #{format.bits_per_sample} bits per sample"
-      duration = reader.total_duration
-      duration.seconds
-    rescue WaveFile::InvalidFormatError => e
-      puts "  Warning: Invalid WAV format, trying TagLib..."
-      # If WaveFile fails, try with TagLib
-      get_taglib_duration(file_path)
+      reader.total_duration.seconds
     rescue => e
       puts "  Warning: Could not get WAV duration: #{e.message}"
-      nil
-    end
-  end
-
-  def get_taglib_duration(file_path)
-    begin
-      TagLib::FileRef.open(file_path) do |file|
-        unless file.null?
-          file.audio_properties.length_in_seconds
-        end
-      end
-    rescue => e
-      puts "  Warning: Could not get duration via TagLib: #{e.message}"
       nil
     end
   end
