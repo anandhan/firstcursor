@@ -1,0 +1,3 @@
+[submodule "audio_file_parser_web"]
+	path = audio_file_parser_web
+	url = https://github.com/anandhan/audio_file_parser_web.git
