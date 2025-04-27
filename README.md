@@ -1,37 +1,35 @@
-<<<<<<< HEAD
-# Audio File Parser Web Application
+# Audio File Parser Web
 
-A Ruby on Rails web application for parsing and managing audio file metadata. The application allows users to scan directories for audio files, extract their metadata, and manage cover art.
+A Ruby on Rails web application for parsing and analyzing audio files (MP3 and WAV formats). This application allows users to scan directories for audio files, view their metadata, and analyze their properties.
 
 ## Features
 
-- Directory scanning for audio files (supports .mp3, .m4a, .wav, .flac, .ogg)
-- Metadata extraction including:
-  - Title
-  - Artist
-  - Album
-  - Year
-  - Genre
-  - Composer
-- Cover art extraction and management
-- Directory contents listing
-- File type detection and categorization
-- File size display
-- Modern, responsive UI with Bootstrap
+- Scan directories for audio files (MP3 and WAV formats)
+- Display file information including:
+  - File name and path
+  - File size
+  - File type
+  - Duration
+  - Metadata (for MP3 files)
+  - Technical details (for WAV files)
+- Modern, responsive web interface
+- Real-time processing feedback
 
-## Prerequisites
+## Dependencies
 
-- Ruby 3.1.3 or higher
-- Rails 7.2.2 or higher
-- SQLite3
-- ExifTool (for metadata extraction)
+- Ruby 3.1.3
+- Rails 7.1.5
+- [ruby-mp3info](https://github.com/moumar/ruby-mp3info) - For MP3 file metadata and duration
+- [wavefile](https://github.com/jstrait/wavefile) - For WAV file analysis
+- SQLite3 (development database)
+- Redis (for Action Cable in production)
 
 ## Installation
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd audio_file_parser_web
+   git clone https://github.com/anandhan/firstcursor.git
+   cd firstcursor/audio_file_parser_web
    ```
 
 2. Install dependencies:
@@ -39,110 +37,55 @@ A Ruby on Rails web application for parsing and managing audio file metadata. Th
    bundle install
    ```
 
-3. Install ExifTool (required for metadata extraction):
+3. Start the Rails server:
    ```bash
-   # On macOS
-   brew install exiftool
-   
-   # On Ubuntu/Debian
-   sudo apt-get install libimage-exiftool-perl
+   bin/rails server
    ```
 
-4. Set up the database:
-   ```bash
-   rails db:create db:migrate
-   ```
-
-5. Start the Rails server:
-   ```bash
-   rails server
-   ```
-
-6. Open your browser and navigate to `http://localhost:3000`
-=======
-# First Cursor
-
-A Ruby-based project for monitoring and analyzing directory changes.
-
-## Features
-
-- Directory monitoring and change detection
-- Audio file metadata extraction
-- File parsing capabilities
-- Real-time change logging
-
-## Setup
-
-1. Install dependencies:
-```bash
-bundle install
-```
->>>>>>> a1e137ed463b6fa3da681a4e13ce529da1ac682a
-
-2. Configure your environment:
-```bash
-cp config/application.example.yml config/application.yml
-```
-
-3. Start the application:
-```bash
-rails server
-```
+4. Access the application at `http://localhost:3000`
 
 ## Usage
 
-<<<<<<< HEAD
-1. **Directory Selection**
-   - Click the "Browse" button to select a directory containing audio files
-   - The application will display the selected directory path
-   - Click "Parse Directory" to scan the directory
+1. Enter the path to a directory containing audio files
+2. Click "Parse Directory" to scan for audio files
+3. View the results in the table below, which shows:
+   - File information
+   - Duration
+   - Metadata (for MP3 files)
+   - Technical details (for WAV files)
 
-2. **Directory Contents**
-   - The application will display all files and subdirectories
-   - Files are categorized by type with appropriate icons
-   - File sizes are displayed in human-readable format
+## File Support
 
-3. **Audio Files**
-   - Audio files are displayed in a grid layout
-   - Each file shows:
-     - Cover art (if available)
-     - Title (or filename if no title metadata)
-     - Artist
-     - Album
-     - Year
-     - Genre
-     - Composer
-   - Click "Update Metadata" to refresh the metadata for a specific file
+### MP3 Files
+- Extracts ID3 tags (title, artist, album, year, genre, comments)
+- Calculates duration
+- Supports metadata updates
 
-## Technical Details
-
-- Uses `mini_exiftool` gem for metadata extraction
-- Implements custom directory scanning with file type detection
-- Handles various audio file formats
-- Provides detailed logging for debugging
-- Implements error handling for invalid paths and file processing
+### WAV Files
+- Extracts technical information:
+  - Number of channels
+  - Sample rate
+  - Bits per sample
+  - Duration
+- Note: WAV files do not support embedded metadata
 
 ## Development
 
-- The application is built with Ruby on Rails 7.2.2
-- Uses Bootstrap 5 for styling
-- Implements responsive design for various screen sizes
-- Includes comprehensive logging for debugging
+### Running Tests
+```bash
+bin/rails test
+```
+
+### Code Style
+The project follows standard Ruby and Rails conventions.
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-=======
-The project provides several key functionalities:
-
-- Directory monitoring with real-time change detection
-- Audio file metadata extraction and manipulation
-- File parsing and analysis
->>>>>>> a1e137ed463b6fa3da681a4e13ce529da1ac682a
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
