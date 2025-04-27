@@ -1,8 +1,11 @@
 Rails.application.routes.draw do
   root 'audio_files#index'
-  resources :audio_files, only: [:index] do
+  resources :audio_files do
     collection do
-      post 'parse'
+      post :parse
+    end
+    member do
+      post :update_metadata
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

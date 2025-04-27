@@ -30,9 +30,10 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "bootsnap", require: false
 
 # Audio file parsing gems
-gem "ruby-mp3info"
-gem "wavefile"
+gem "ruby-mp3info", "~> 0.8.10"
+gem "wavefile", "~> 1.1.1"
 gem "mini_exiftool"
+gem "parallel"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

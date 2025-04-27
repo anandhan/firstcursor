@@ -1,45 +1,31 @@
-require_relative '../../lib/audio_parser/file_parser'
+require_relative '../../lib/file_parser'
 
 class AudioFilesController < ApplicationController
   def index
-    @files = []
+    @audio_files = []
   end
 
   def parse
-    directory_path = params[:directory_path]
-    Rails.logger.info "Received directory path: #{directory_path}"
-
-    if directory_path.blank?
-      flash[:error] = "Please enter a directory path"
-      redirect_to root_path and return
-    end
-
-    begin
-      expanded_path = File.expand_path(directory_path)
-      Rails.logger.info "Expanded path: #{expanded_path}"
-
-      unless File.directory?(expanded_path)
-        flash[:error] = "Invalid directory path: #{expanded_path}"
-        redirect_to root_path and return
-      end
-
-      parser = FileParser.new
-      @files = []
+    if params[:directory_path].present?
+      Rails.logger.info "Attempting to parse directory: #{params[:directory_path]}"
       
-      parser.parse_directory(expanded_path) do |file_info|
-        @files << file_info
-        Rails.logger.info "Added file: #{file_info[:path]}"
+      if !File.directory?(params[:directory_path])
+        Rails.logger.error "Directory does not exist: #{params[:directory_path]}"
+        flash[:error] = "Directory does not exist"
+        @audio_files = []
+      else
+        @audio_files = FileParser.new.parse_directory(params[:directory_path])
+        Rails.logger.info "Parsed #{@audio_files&.size || 0} files"
+        
+        if @audio_files.empty?
+          flash[:notice] = "No audio files found in the specified directory"
+        end
       end
-
-      Rails.logger.info "Found #{@files.size} audio files"
-      flash[:notice] = "Found #{@files.size} audio files"
-    rescue => e
-      Rails.logger.error "Error scanning directory: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      flash[:error] = "Error scanning directory: #{e.message}"
-      @files = []
+    else
+      Rails.logger.warn "No directory path provided"
+      flash[:error] = "Please provide a directory path"
+      @audio_files = []
     end
-
     render :index
   end
 

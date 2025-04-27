@@ -5,17 +5,25 @@ require 'mp3info'
 require 'wavefile'
 require 'pathname'
 require_relative 'audio_metadata'
+require 'parallel'
+require 'timeout'
+require 'mini_exiftool'
 
 class FileParser
+  attr_reader :files
+
   def initialize(options = {})
     @options = {
-      # Common audio file extensions
-      file_pattern: /\.(mp3|wav|aac|flac|ogg|m4a|wma|aiff|alac)$/i,  # Case insensitive match
+      file_pattern: /\.(mp3|wav|flac)$/i,
       exclude_dirs: ['.', '..', '.git', 'node_modules'],
-      exclude_files: [/^\._/],  # Exclude macOS metadata files
-      verbose: true  # Always show verbose output for better debugging
+      verbose: true,
+      max_workers: 4,  # Number of parallel workers
+      extract_cover_art: true,  # Whether to extract cover art
+      metadata_timeout: 5,  # Timeout for metadata extraction
+      duration_timeout: 5   # Timeout for duration extraction
     }.merge(options)
     
+    @files = []
     @processed_files = 0
     @successful_files = 0
   end
@@ -26,72 +34,103 @@ class FileParser
       return
     end
 
-    process_directory(directory_path)
+    # First, collect all audio files
+    audio_files = collect_audio_files(directory_path)
+    puts "Found #{audio_files.size} audio files to process"
+
+    # Process files in parallel
+    results = Parallel.map(audio_files, in_processes: @options[:max_workers]) do |file_path|
+      process_audio_file(file_path)
+    end
+
+    # Filter out nil results and add to @files
+    @files = results.compact
+    puts "Successfully processed #{@files.size} files"
   end
 
   private
 
-  def process_directory(directory_path)
+  def collect_audio_files(directory_path)
+    audio_files = []
     Dir.foreach(directory_path) do |entry|
-      # Skip excluded directories and files
       next if @options[:exclude_dirs].include?(entry)
-      next if @options[:exclude_files].any? { |pattern| entry.match(pattern) }
-
+      
       full_path = File.join(directory_path, entry)
       
       if File.directory?(full_path)
-        process_directory(full_path)
+        audio_files.concat(collect_audio_files(full_path))
       elsif File.file?(full_path) && entry.match(@options[:file_pattern])
-        @processed_files += 1
-        if process_audio_file(full_path)
-          @successful_files += 1
-        end
+        audio_files << full_path
       end
     end
+    audio_files
   end
 
   def process_audio_file(file_path)
-    success = false
+    return unless File.file?(file_path)
+    
     begin
-      file_size = File.size(file_path)
-      file_extension = File.extname(file_path).downcase
+      file_name = File.basename(file_path)
+      puts "\nProcessing: #{file_name}"
       
-      puts "\nProcessing: #{File.basename(file_path)}"
-      puts "File size: #{format_file_size(file_size)}"
+      # Get file size in MB
+      size_mb = File.size(file_path).to_f / (1024 * 1024)
+      puts "File size: #{'%.2f' % size_mb} MB"
       
-      # Get audio metadata and duration
-      metadata = AudioMetadata.extract(file_path)
-      duration = get_audio_duration(file_path)
-      
-      # Format the output
-      output = {
-        path: file_path,
-        size: format_file_size(file_size),
-        type: file_extension,
-        duration: format_duration(duration),
-        metadata: metadata
-      }
-      
-      if duration || metadata.any? { |_, v| !v.nil? && !v.empty? }
-        success = true
+      # Extract metadata with timeout
+      metadata = nil
+      begin
+        Timeout.timeout(@options[:metadata_timeout]) do
+          metadata = AudioMetadata.extract(file_path, 
+            extract_cover_art: @options[:extract_cover_art],
+            timeout: @options[:metadata_timeout]
+          )
+        end
+      rescue Timeout::Error
+        puts "  Warning: Metadata extraction timed out for #{file_name}"
+        metadata = {}
       end
       
-      yield(output) if block_given?
+      # Get duration from metadata or extract it
+      duration = metadata[:duration]
+      if duration.nil?
+        begin
+          Timeout.timeout(@options[:duration_timeout]) do
+            duration = get_duration(file_path)
+          end
+        rescue Timeout::Error
+          puts "  Warning: Duration extraction timed out for #{file_name}"
+        end
+      end
+      
+      file_info = {
+        path: file_path,
+        size: "#{'%.2f' % size_mb} MB",
+        type: File.extname(file_path).upcase[1..-1],
+        duration: duration,
+        metadata: metadata || {}
+      }
+      
+      puts "Successfully processed: #{file_name}"
+      file_info
+      
     rescue => e
-      puts "Error processing #{File.basename(file_path)}: #{e.message}"
+      puts "  Error processing #{file_path}: #{e.message}"
+      puts e.backtrace.join("\n")
+      nil
     end
-    success
   end
 
-  def get_audio_duration(file_path)
+  def get_duration(file_path)
     case File.extname(file_path).downcase
     when '.mp3'
       get_mp3_duration(file_path)
     when '.wav'
       get_wav_duration(file_path)
+    when '.flac'
+      get_flac_duration(file_path)
     else
-      # For other formats, we'll use TagLib's duration
-      get_taglib_duration(file_path)
+      nil
     end
   end
 
@@ -108,31 +147,20 @@ class FileParser
 
   def get_wav_duration(file_path)
     begin
-      # First try with WaveFile gem
       reader = WaveFile::Reader.new(file_path)
-      format = reader.format
-      puts "  WAV format: #{format.channels} channels, #{format.sample_rate} Hz, #{format.bits_per_sample} bits per sample"
-      duration = reader.total_duration
-      duration.seconds
-    rescue WaveFile::InvalidFormatError => e
-      puts "  Warning: Invalid WAV format, trying TagLib..."
-      # If WaveFile fails, try with TagLib
-      get_taglib_duration(file_path)
+      reader.total_duration.seconds
     rescue => e
       puts "  Warning: Could not get WAV duration: #{e.message}"
       nil
     end
   end
 
-  def get_taglib_duration(file_path)
+  def get_flac_duration(file_path)
     begin
-      TagLib::FileRef.open(file_path) do |file|
-        unless file.null?
-          file.audio_properties.length_in_seconds
-        end
-      end
+      exif = MiniExiftool.new(file_path)
+      exif.duration
     rescue => e
-      puts "  Warning: Could not get duration via TagLib: #{e.message}"
+      puts "  Warning: Could not get FLAC duration: #{e.message}"
       nil
     end
   end

@@ -1,42 +1,43 @@
 # Audio File Parser Web
 
-A Ruby on Rails web application for parsing and analyzing audio files (MP3 and WAV formats). This application allows users to scan directories for audio files, view their metadata, and analyze their properties.
+A web application for parsing and managing audio file metadata, supporting MP3, WAV, and FLAC formats.
 
 ## Features
 
-- Scan directories for audio files (MP3 and WAV formats)
-- Display file information including:
-  - File name and path
-  - File size
-  - File type
+- Parse audio files from any directory
+- Extract metadata including:
+  - Title, Artist, Album, Year, Genre, Comments
+  - Technical details (channels, sample rate, bit depth)
   - Duration
-  - Metadata (for MP3 files)
-  - Technical details (for WAV files)
+  - File size
+- Extract and display cover art (for MP3 and WAV files)
+- Update metadata for supported formats
 - Modern, responsive web interface
-- Real-time processing feedback
-- Easy installation with automated setup script
 
-## Dependencies
+## Supported Formats
+
+- MP3 files (using ruby-mp3info)
+- WAV files (using wavefile)
+- FLAC files (using mini_exiftool)
+
+## Requirements
 
 - Ruby 3.1.3 or higher
-- Rails 7.1.5
-- [ruby-mp3info](https://github.com/moumar/ruby-mp3info) - For MP3 file metadata and duration
-- [wavefile](https://github.com/jstrait/wavefile) - For WAV file analysis
-- SQLite3 (development database)
-- Redis (for Action Cable in production)
+- Bundler
+- ffmpeg (for cover art extraction)
+- Redis (optional, for background processing)
 
 ## Installation
 
-### Quick Installation (Recommended)
-
 1. Clone the repository:
    ```bash
-   git clone https://github.com/anandhan/firstcursor.git
-   cd firstcursor/audio_file_parser_web
+   git clone <repository-url>
+   cd audio_file_parser_web
    ```
 
 2. Run the installation script:
    ```bash
+   chmod +x install.sh
    ./install.sh
    ```
 
@@ -46,72 +47,29 @@ The installation script will:
 - Set up the database
 - Start the Rails server
 
-### Manual Installation
+## Usage
 
-If you prefer to install manually:
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/anandhan/firstcursor.git
-   cd firstcursor/audio_file_parser_web
-   ```
-
-2. Install dependencies:
-   ```bash
-   bundle install
-   ```
-
-3. Create necessary directories:
-   ```bash
-   mkdir -p log tmp/pids
-   ```
-
-4. Set up the database:
-   ```bash
-   bin/rails db:create db:migrate
-   ```
-
-5. Start the Rails server:
+1. Start the application:
    ```bash
    bin/rails server
    ```
 
-6. Access the application at `http://localhost:3000`
+2. Open your browser and navigate to:
+   ```
+   http://localhost:3000
+   ```
 
-## Usage
+3. Enter a directory path containing audio files and click "Parse Directory"
 
-1. Enter the path to a directory containing audio files
-2. Click "Parse Directory" to scan for audio files
-3. View the results in the table below, which shows:
-   - File information
-   - Duration
-   - Metadata (for MP3 files)
-   - Technical details (for WAV files)
-
-## File Support
-
-### MP3 Files
-- Extracts ID3 tags (title, artist, album, year, genre, comments)
-- Calculates duration
-- Supports metadata updates
-
-### WAV Files
-- Extracts technical information:
-  - Number of channels
-  - Sample rate
-  - Bits per sample
-  - Duration
-- Note: WAV files do not support embedded metadata
+4. View and manage your audio files' metadata
 
 ## Development
 
-### Running Tests
-```bash
-bin/rails test
-```
-
-### Code Style
-The project follows standard Ruby and Rails conventions.
+- The application uses Rails 7.1.5.1
+- Main components:
+  - `AudioMetadata` class for metadata extraction
+  - `FileParser` class for directory scanning
+  - Modern UI with Tailwind CSS
 
 ## Contributing
 
