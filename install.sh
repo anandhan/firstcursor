@@ -39,6 +39,15 @@ if ! command -v bundle &> /dev/null; then
     gem install bundler
 fi
 
+# Check if exiftool is installed
+if ! command -v exiftool &> /dev/null; then
+    print_warning "exiftool is not installed. Cover art extraction may be limited."
+    print_warning "Please install exiftool using your package manager:"
+    print_warning "  - macOS: brew install exiftool"
+    print_warning "  - Ubuntu/Debian: sudo apt-get install libimage-exiftool-perl"
+    print_warning "  - Fedora: sudo dnf install perl-Image-ExifTool"
+fi
+
 # Check if ffmpeg is installed
 if ! command -v ffmpeg &> /dev/null; then
     print_warning "ffmpeg is not installed. Cover art extraction will not work."

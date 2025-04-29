@@ -57,7 +57,7 @@ class AudioMetadata
         if options[:extract_cover_art]
           begin
             @@logger.debug "Attempting to extract cover art from WAV file"
-            cover_art = extract_cover_art_with_ffmpeg(file_path)
+            cover_art = extract_cover_art(file_path)
             if cover_art
               metadata[:cover_art] = cover_art[:data]
               metadata[:cover_art_mime_type] = cover_art[:mime_type]
@@ -89,7 +89,7 @@ class AudioMetadata
         # Try to extract cover art from FLAC if enabled
         if options[:extract_cover_art]
           begin
-            cover_art = extract_cover_art_with_ffmpeg(file_path)
+            cover_art = extract_cover_art(file_path)
             if cover_art
               metadata[:cover_art] = cover_art[:data]
               metadata[:cover_art_mime_type] = cover_art[:mime_type]
@@ -221,6 +221,55 @@ class AudioMetadata
     end
     
     nil
+  end
+
+  def self.extract_cover_art_with_exiftool(file_path)
+    unless system("which exiftool > /dev/null 2>&1")
+      @@logger.warn "exiftool not found in system"
+      return nil
+    end
+    
+    temp_file = Tempfile.new(['cover', '.jpg'])
+    begin
+      @@logger.debug "Running exiftool command to extract cover art from: #{file_path}"
+      
+      # Try to extract embedded cover art using exiftool
+      success = system("exiftool -b -Picture \"#{file_path}\" > \"#{temp_file.path}\" 2>/dev/null")
+      
+      if !success
+        @@logger.debug "exiftool command failed"
+        return nil
+      end
+      
+      if File.exist?(temp_file.path) && File.size(temp_file.path) > 0
+        @@logger.debug "Cover art extracted to temp file using exiftool, size: #{File.size(temp_file.path)} bytes"
+        data = Base64.strict_encode64(File.binread(temp_file.path))
+        @@logger.debug "Cover art data length: #{data.length} characters"
+        return {
+          data: data,
+          mime_type: 'image/jpeg'
+        }
+      else
+        @@logger.debug "No cover art extracted using exiftool (temp file empty or missing)"
+      end
+    rescue => e
+      @@logger.error "Error extracting cover art with exiftool: #{e.message}"
+      @@logger.error e.backtrace.join("\n")
+    ensure
+      temp_file.close
+      temp_file.unlink
+    end
+    
+    nil
+  end
+
+  def self.extract_cover_art(file_path)
+    # Try exiftool first
+    cover_art = extract_cover_art_with_exiftool(file_path)
+    return cover_art if cover_art
+
+    # Fall back to ffmpeg if exiftool fails
+    extract_cover_art_with_ffmpeg(file_path)
   end
 
   def self.prompt_for_metadata
