@@ -13,8 +13,8 @@
     </div>
   <% end %>
 
-  <!-- Simple Directory Input Form -->
-  <div class="bg-white p-6 rounded-lg shadow-md">
+  <!-- Parse Directory Form -->
+  <div class="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
     <h2 class="text-xl font-semibold mb-4">Parse Directory</h2>
     <%= form_tag parse_audio_files_path, method: :post, class: "space-y-4" do %>
       <div>
@@ -26,7 +26,7 @@
   </div>
 
   <!-- Results Section -->
-  <% if @audio_files&.any? %>
+  <% if @files&.any? %>
     <div class="mt-8">
       <h2 class="text-2xl font-semibold mb-4">Found Audio Files</h2>
       <div class="bg-white rounded-lg shadow-md overflow-hidden">
@@ -42,51 +42,17 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <% @audio_files.each_with_index do |file, index| %>
+              <% @files&.each do |file| %>
                 <tr>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center">
-                      <% if file[:metadata][:cover_art].present? %>
-                        <div class="mr-4">
-                          <button onclick="showModal('modal-<%= index %>')" class="focus:outline-none">
-                            <img src="data:<%= file[:metadata][:cover_art_mime_type] %>;base64,<%= file[:metadata][:cover_art] %>" 
-                                 alt="Cover art" 
-                                 class="h-16 w-16 rounded-lg object-cover shadow-md hover:shadow-lg transition-shadow"
-                                 onerror="console.error('Failed to load cover art for <%= File.basename(file[:path]) %>')">
-                          </button>
-                          <!-- Debug information -->
-                          <div class="text-xs text-gray-500 mt-1">
-                            Cover art present: <%= file[:metadata][:cover_art].present? %>
-                            MIME type: <%= file[:metadata][:cover_art_mime_type] %>
-                          </div>
-                          <!-- Modal -->
-                          <div id="modal-<%= index %>" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-                            <div class="bg-white p-4 rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
-                              <img src="data:<%= file[:metadata][:cover_art_mime_type] %>;base64,<%= file[:metadata][:cover_art] %>" 
-                                   alt="Cover art" 
-                                   class="max-w-full h-auto rounded-lg">
-                              <button onclick="hideModal('modal-<%= index %>')" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                                Close
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      <% else %>
-                        <div class="mr-4 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <span class="text-xs text-gray-500">No cover</span>
-                        </div>
-                      <% end %>
-                      <div class="text-sm text-gray-900"><%= File.basename(file[:path]) %></div>
-                    </div>
-                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><%= File.basename(file[:path]) %></td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= file[:size] %></td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= file[:type] %></td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= file[:duration] %></td>
                   <td class="px-6 py-4 text-sm text-gray-500">
-                    <% if file[:metadata].any? { |_, v| !v.nil? && !v.empty? } %>
+                    <% if file[:metadata]&.any? { |_, v| !v.nil? && !v.to_s.empty? } %>
                       <ul>
                         <% file[:metadata].each do |key, value| %>
-                          <% if value.present? && key != :cover_art && key != :cover_art_mime_type %>
+                          <% if value.present? %>
                             <li><strong><%= key.capitalize %>:</strong> <%= value %></li>
                           <% end %>
                         <% end %>

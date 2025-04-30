@@ -1,0 +1,11 @@
+default: &default
+  url: <%= ENV.fetch("AUDIO_PROCESSOR_URL", "http://localhost:8080") %>
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default 

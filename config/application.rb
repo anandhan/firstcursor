@@ -27,5 +27,8 @@ module AudioFileParserWeb
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Add configuration for audio processor service
+    config.x.audio_processor = config_for(:audio_processor)
   end
 end
